@@ -1,3 +1,3 @@
-# Sample Node.js application
+# Task Management App (API)
 
-This repository is a sample Node.js application for Docker's documentation.
+A real-time collaborative task management app. This is build using Node, Express, and Socket.
