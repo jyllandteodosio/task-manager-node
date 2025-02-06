@@ -1,124 +1,120 @@
-const Task = require("../models/tasksexports.getTasks = async (req, res) => {
-	try {
-		const db = getDB();
-		const tasks = await db.collection("tasks").find({}).toArray();
+import { Request } from "express";
+import { v4 as uuidv4 } from 'uuid';
+import { getDB } from "../db.ts";
+import Task from '../models/taskModel.ts';
 
-		const response = {
-			message: "GET TASKS: Successfully fetched tasks",
-			result: tasks.map(task => new TaskModel(task))
+const getTasks = async () => {
+  try {
+    const db = getDB();
+    const result = await db.collection("tasks").find({}).toArray();
+
+    if(!result.length) return null;
+
+		const tasks = result.map((task: Task) => {
+			return new Task(
+				task.id,
+        task.title,
+        task.body,
+        new Date(task.dueDate),
+        task.status,
+        task.userId,
+        new Date(task.creationDate),
+        task.prev
+			)
+		})
+
+    return tasks;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getTaskWithId = async (req: Request) => {
+  try {
+    const { id } = req.params;
+
+    const db = getDB();
+    const result = await db.collection("tasks").find({ id: id }).toArray();
+
+		if(!result.length) return null;
+
+		const tasks = result.map((task: Task) => {
+			return new Task(
+				task.id,
+        task.title,
+        task.body,
+        new Date(task.dueDate),
+        task.status,
+        task.userId,
+        new Date(task.creationDate),
+        task.prev
+			)
+		})
+
+    return tasks;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const addTask = async (req: Request) => {
+	try {
+		const newTask: Task = {
+			...req.body,
+      id: uuidv4(),
+			creationDate: new Date()
 		};
 
-		console.log(response);
-		res.json(response);
+		const db = getDB();
+		const result = await db.collection("tasks").insertOne({
+			...newTask,
+			creationDate: newTask.creationDate.toISOString(),
+		});
+		console.log(result);
+
+		const addedTaskData = await db.collection("tasks").findOne({ _id: result.insertedId });
+		return addedTaskData;
 
 	} catch (error) {
-		res.status(500).json({ error: error.message });
+		console.log(error);
 	}
 };
 
-exports.getTaskWithId = async (req, res) => {
-	try {
-		const { id } = req.params;
+const updateTask = async (req: Request) => {
+  try {
+    const { id } = req.params;
+    const filter = { id: id };
 
-		const db = getDB();
-		const tasks = await db.collection("tasks").find({ id: id }).toArray();
+    const updatedTask: Task = {
+      ...req.body,
+    };
+    console.log({ updatedTask });
 
-		const response = {
-			message: "GET TASK WITH ID: Successfully fetched task",
-			result: tasks
-		};
+    const db = getDB();
+    const result = await db.collection("tasks").updateOne(filter, { $set: updatedTask });
+		console.log(result);
 
-		console.log(response);
-		res.json(response);
+		const updatedTaskData = await db.collection("tasks").findOne({ id: id });
+    return updatedTaskData;
 
-	} catch (error) {
-		res.status(500).json({ error: error.message });
-	}
+  } catch (error) {
+    console.log(error);
+  }
 };
 
-exports.addTask = async (req, res) => {
-	try {
-		const uuid = uuidv4();
-		const currentDate = new Date().toISOString();
+const deleteTask = async (req: Request) => {
+  try {
+    const { id } = req.params;
+    const filter = { id: id };
 
-		// const newTask = {
-		// 	id: uuid, - generate in api
-		// 	title: "Task 3", - from request
-		// 	body: "Task description", - from request
-		// 	dueDate: currentDate, - from request
-		// 	status: "Pending", - from request
-		// 	userId: "1", - from request
-		// 	creationDate: currentDate, - generate in api
-		// 	prev: "ec1a5f2c-20b3-4009-9c63-4fb021e69a48" - from request
-		// };
+    const db = getDB();
+    const result = await db.collection("tasks").deleteOne(filter);
 
-		const newTask = req.body;
-		newTask.id = uuid;
-		newTask.creationDate = currentDate;
-		console.log({ newTask: req.body });
+    return result;
 
-		const db = getDB();
-		const task = await db.collection("tasks").insertOne(newTask);
-
-		const response = {
-			message: "ADD TASK: Successfully added task",
-			result: task
-		};
-
-		console.log(response)
-		res.json(response);
-
-	} catch (error) {
-		res.status(500).json({ error: error.message });
-	}
+  } catch (error) {
+    console.log(error);
+  }
 };
 
-exports.updateTask = async (req, res) => {
-	try {
-		const { id } = req.params;
-		const filter = { id: id }
-
-		const updatedTask = {
-			$set : req.body,
-		}
-		console.log({ updatedTask: req.body });
-
-		const db = getDB();
-		const task = await db.collection("tasks").updateOne(filter, updatedTask);
-
-		const response = {
-			message: "UPDATE TASK: Successfully updated task",
-			result: task
-		};
-
-		console.log(response) 
-		res.json(response);
-
-	} catch (error) {
-		res.status(500).json({ error: error.message });
-	}
-};
-
-exports.deleteTask = async (req, res) => {
-	try {
-
-		const { id } = req.params;
-		const filter = { id: id }
-
-		const db = getDB();
-		const task = await db.collection("tasks").deleteOne(filter);
-
-		const response = {
-			message: "DELETE TASK: Successfully deleted task",
-			result: task
-		};
-
-		console.log(response) 
-		res.json(response);
-
-	} catch (error) {
-		res.status(500).json({ error: error.message });
-	}
-};
-
-")
+export const taskService = { getTasks, getTaskWithId, addTask, updateTask, deleteTask }
