@@ -15,8 +15,6 @@ const getTasks = async () => {
 				task.id,
         task.title,
         task.body,
-        new Date(task.dueDate),
-        task.status,
         task.userId,
         new Date(task.creationDate),
         task.prev
@@ -43,8 +41,6 @@ const getTaskWithId = async (req: Request) => {
 				task.id,
         task.title,
         task.body,
-        new Date(task.dueDate),
-        task.status,
         task.userId,
         new Date(task.creationDate),
         task.prev
@@ -70,7 +66,6 @@ const addTask = async (req: Request) => {
 			...newTask,
 			creationDate: newTask.creationDate.toISOString(),
 		});
-		console.log(result);
 
 		const addedTaskData = await db.collection("tasks").findOne({ _id: result.insertedId });
 		return addedTaskData;
@@ -85,14 +80,10 @@ const updateTask = async (req: Request) => {
     const { id } = req.params;
     const filter = { id: id };
 
-    const updatedTask: Task = {
-      ...req.body,
-    };
-    console.log({ updatedTask });
-
+    const { _id, id: taskId, ...taskToUpdate } = req.body;
+   
     const db = getDB();
-    const result = await db.collection("tasks").updateOne(filter, { $set: updatedTask });
-		console.log(result);
+    const result = await db.collection("tasks").updateOne(filter, { $set: taskToUpdate });
 
 		const updatedTaskData = await db.collection("tasks").findOne({ id: id });
     return updatedTaskData;
@@ -110,7 +101,7 @@ const deleteTask = async (req: Request) => {
     const db = getDB();
     const result = await db.collection("tasks").deleteOne(filter);
 
-    return result;
+    return filter;
 
   } catch (error) {
     console.log(error);
