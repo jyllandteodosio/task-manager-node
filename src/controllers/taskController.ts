@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { taskService } from "../services/taskService.ts";
 
+export const testConnect = (req: Request, res: Response) => {
+  res.json({ message: "connected to taskController" });
+};
+
 export const getTasks = async (req: Request, res: Response) => {
   try {
     const tasks = await taskService.getTasks();
@@ -17,12 +21,12 @@ export const getTasks = async (req: Request, res: Response) => {
   }
 };
 
-export const getTaskWithId = async (req: Request, res: Response) => {
+export const getTaskById = async (req: Request, res: Response) => {
   try {
-    const tasks = await taskService.getTaskWithId(req);
+    const tasks = await taskService.getTaskById(req);
 
     const response = {
-      message: "GET TASK WITH ID: Successfully fetched task",
+      message: "GET TASK BY ID: Successfully fetched task",
       result: tasks,
     };
 

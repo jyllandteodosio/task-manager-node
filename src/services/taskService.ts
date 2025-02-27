@@ -27,7 +27,7 @@ const getTasks = async () => {
   }
 };
 
-const getTaskWithId = async (req: Request) => {
+const getTaskById = async (req: Request) => {
   try {
     const { id } = req.params;
 
@@ -108,4 +108,4 @@ const deleteTask = async (req: Request) => {
   }
 };
 
-export const taskService = { getTasks, getTaskWithId, addTask, updateTask, deleteTask }
+export const taskService = { getTasks, getTaskById, addTask, updateTask, deleteTask }

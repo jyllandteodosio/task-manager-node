@@ -1,5 +1,6 @@
 import { MongoClient } from 'mongodb';
-import { config } from './config.ts';
+import dotenv from "dotenv";
+import { config } from "./config.ts";
 
 const client = new MongoClient(config.database.MONGO_URI);
 let db: any;
