@@ -1,6 +1,20 @@
 import { Request, Response } from "express";
 import { authService } from "../services/authService.ts";
 
+const checkAuthStatus = async (req: Request, res: Response) => {
+	try {
+		const response = {
+			message: "CHECK USER AUTH STATUS: User is authenticated",
+			result: req.session,
+		};
+
+		console.log(response);
+		res.json(response);
+	} catch (error: any) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
 const login = async (req: Request, res: Response) => {
 	try {
 		const user = await authService.loginUser(req);
@@ -11,24 +25,8 @@ const login = async (req: Request, res: Response) => {
 
 		if (user) {
 			response.message = "LOGIN USER: Successfully logged in user";
-			response.result = user;
+			response.result = req.session;
 		}
-
-		console.log(response);
-		res.json(response);
-
-	} catch (error: any) {
-		res.status(500).json({ error: error.message });
-	}
-};
-
-const register = async (req: Request, res: Response) => {
-	try {
-		const user = await authService.registerUser(req);
-		const response = {
-			message: "REGISTER USER: Successfully registered user",
-			result: user,
-		};
 
 		console.log(response);
 		res.json(response);
@@ -57,6 +55,6 @@ const register = async (req: Request, res: Response) => {
 // };
 
 
-const authController = { login, register };
+const authController = { checkAuthStatus, login };
 
 export default authController;

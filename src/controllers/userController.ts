@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { userService } from "../services/userService.ts"
 
-export const getUserById = async (req: Request, res: Response) => {
+const getUserById = async (req: Request, res: Response) => {
 	try {
 		const users = await userService.getUserById(req);
 
@@ -17,14 +17,18 @@ export const getUserById = async (req: Request, res: Response) => {
 	}
 };
 
-export const addUser = async (req: Request, res: Response) => {
+const addUser = async (req: Request, res: Response) => {
 	try {
 		const user = await userService.addUser(req);
-
 		const response = {
-			message: "ADD USER: Successfully added user",
-			result: user,
+			message: "REGISTER USER: Successfully registered user",
+			result: {},
 		};
+
+		if (user) {
+			response.message = "REGISTER USER: Successfully registered user";
+			response.result = { userId: user };
+		}
 
 		console.log(response);
 		res.json(response);
@@ -33,7 +37,7 @@ export const addUser = async (req: Request, res: Response) => {
 	}
 };
 
-export const updateUser = async (req: Request, res: Response) => {
+const updateUser = async (req: Request, res: Response) => {
 	try {
 		const user = await userService.updateUser(req);
 
@@ -49,7 +53,7 @@ export const updateUser = async (req: Request, res: Response) => {
 	}
 };
 
-export const deleteUser = async (req: Request, res: Response) => {
+const deleteUser = async (req: Request, res: Response) => {
 	try {
 		const user = await userService.deleteUser(req);
 
@@ -64,3 +68,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 		res.status(500).json({ error: error.message });
 	}
 };
+
+const userController = { getUserById, addUser, updateUser, deleteUser };
+
+export default userController;
