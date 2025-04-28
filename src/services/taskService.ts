@@ -1,277 +1,204 @@
-import { Request } from "express";
-import { v4 as uuidv4 } from 'uuid';
-import { getDB } from "../db.ts";
-import Task from '../models/taskModel.ts';
 
-export const getTasksByListId = async (req: Request) => {
-  try {
-    const { listId } = req.params;
-    const filter = {
-      listId,
+import { Types } from 'mongoose';
+import Task, { ITask } from '../models/taskModel.ts';
+import { listService } from './listService.ts';
+
+/**
+ * Fetches all tasks for a specific list, ensuring the user has access.
+ * Tasks are sorted by the 'order' field.
+ * @param listId - The ID of the list.
+ * @param userId - The ID of the user requesting the tasks.
+ * @returns A promise resolving to an array of task documents or null if list access denied or error.
+ */
+const getTasksByListId = async (listId: string | Types.ObjectId, userId: string | Types.ObjectId): Promise<ITask[] | null> => {
+    try {
+        const list = await listService.getListById(listId, userId);
+        if (!list) {
+            console.log(`Access denied or list not found for listId: ${listId}, userId: ${userId}`);
+            return null;
+        }
+        const tasks = await Task.find({ listId: listId })
+                                .sort({ order: 1 })
+                                .exec();
+        return tasks;
+    } catch (error: any) {
+        console.error(`Error fetching tasks for list ${listId}:`, error.message);
+        return null;
     }
-
-    const db = getDB();
-    const result = await db.collection("tasks").find(filter).toArray();
-
-		if(!result.length) return null;
-
-		const tasks = result.map((task: Task) => {
-			return new Task(
-				task.id,
-        task.title,
-        task.body,
-        task.userId,
-        task.listId,
-        new Date(task.creationDate),
-        task.prev
-			)
-		});
-
-    return tasks;
-  } catch (error) {
-    console.log(error);
-  }
 };
 
-export const getTaskByIdUnderList = async (req: Request) => {
-  try {
-    const { taskId, listId } = req.params;
-    const filter = {
-      id: taskId,
-      listId: listId
+/**
+ * Fetches a single task by its ID within a specific list, ensuring user has list access.
+ * @param taskId - The ID of the task.
+ * @param listId - The ID of the list the task belongs to.
+ * @param userId - The ID of the user requesting the task.
+ * @returns A promise resolving to the task document or null if not found/no access.
+ */
+const getTaskByIdUnderList = async (taskId: string | Types.ObjectId, listId: string | Types.ObjectId, userId: string | Types.ObjectId): Promise<ITask | null> => {
+    try {
+        const list = await listService.getListById(listId, userId);
+        if (!list) {
+            console.log(`Access denied or list not found for listId: ${listId}, userId: ${userId}`);
+            return null;
+        }
+        const task = await Task.findOne({ _id: taskId, listId: listId }).exec();
+        return task;
+    } catch (error: any) {
+        console.error(`Error fetching task ${taskId} from list ${listId}:`, error.message);
+        return null;
     }
-
-    const db = getDB();
-    const result = await db.collection("tasks").findOne(filter);
-
-    console.log({service_getTaskByIdUnderList: result.length});
-
-		if(!result) return null;
-
-		const task = new Task(
-      result.id,
-      result.title,
-      result.body,
-      result.userId,
-      result.listId,
-      new Date(result.creationDate),
-      result.prev
-    )
-
-    return task;
-
-  } catch (error) {
-    console.log(error);
-  }
 };
 
-export const addTaskUnderList = async (req: Request) => {
-	try {
-    const { listId } = req.params;
-    const userId = req.session.userId;
-		const newTask: Task = {
-			...req.body,
-      id: uuidv4(),
-      userId,
-      listId,
-			creationDate: new Date()
-		};
+/**
+ * Adds a new task (with optional description) to a specific list, ensuring user has list access.
+ * Assigns an order based on the current highest order + 1.
+ * @param taskData - Object containing task properties (e.g., text, description).
+ * @param listId - The ID of the list to add the task to.
+ * @param userId - The ID of the user adding the task.
+ * @returns A promise resolving to the newly created task document or null on error/no access.
+ */
+const addTaskUnderList = async (taskData: Partial<Pick<ITask, 'text' | 'description'>>, listId: string | Types.ObjectId, userId: string | Types.ObjectId): Promise<ITask | null> => {
+    try {
+        const list = await listService.getListById(listId, userId);
+        if (!list) {
+            console.log(`Access denied or list not found for listId: ${listId}, userId: ${userId}`);
+            return null;
+        }
 
-		const db = getDB();
-		const query = await db.collection("tasks").insertOne({
-			...newTask,
-			creationDate: newTask.creationDate.toISOString(),
-		});
+        if (!taskData.text || taskData.text.trim() === '') {
+             throw new Error("Task text cannot be empty.");
+        }
 
-		const addedTaskData = await db.collection("tasks").findOne({ _id: query.insertedId });
-		return addedTaskData;
+        const lastTask = await Task.findOne({ listId }).sort({ order: -1 }).select('order').exec();
+        const newOrder = lastTask ? lastTask.order + 1 : 0;
 
-	} catch (error) {
-		console.log(error);
-	}
-};
+        const newTask = await Task.create({
+            text: taskData.text.trim(),
+            description: taskData.description?.trim(), 
+            listId: listId,
+            createdBy: userId,
+            order: newOrder,
+            completed: false
+        });
 
-export const updateTaskUnderList = async (req: Request) => {
-  try {
-    const { taskId, listId } = req.params;
-    const filter = {
-      id: taskId,
-      listId,
-    };
-
-    const { _id, id, ...taskToUpdate } = req.body;
-   
-    const db = getDB();
-    const query = await db.collection("tasks").updateOne(filter, { $set: taskToUpdate });
-
-		const updatedTaskData = await db.collection("tasks").findOne({ _id: query.insertedId });
-    return updatedTaskData;
-
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-export const deleteTaskUnderList = async (req: Request) => {
-  try {
-    const { taskId, listId } = req.params;
-    const filter = {
-      id: taskId,
-      listId
-    };
-
-    const db = getDB();
-    const result = await db.collection("tasks").deleteOne(filter);
-
-    return filter;
-
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-// Old task routes
-
-export const getTasks = async () => {
-  try {
-    const db = getDB();
-    const result = await db.collection("tasks").find({}).toArray();
-
-    if(!result.length) return null;
-
-		const tasks = result.map((task: Task) => {
-			return new Task(
-				task.id,
-        task.title,
-        task.body,
-        task.userId,
-        task.listId,
-        new Date(task.creationDate),
-        task.prev
-			)
-		})
-
-    return tasks;
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-export const getTaskByUser = async (req: Request) => {
-  try {
-    const userId = req.session.userId;
-    const filter = {
-      userId,
+        console.log(`Task added successfully to list ${listId} with ID: ${newTask._id}`);
+        return newTask;
+    } catch (error: any) {
+        console.error(`Error adding task to list ${listId} by user ${userId}:`, error.message);
+        return null;
     }
-
-    const db = getDB();
-    const result = await db.collection("tasks").find(filter).toArray();
-
-		if(!result.length) return null;
-
-		const tasks = result.map((task: Task) => {
-			return new Task(
-				task.id,
-        task.title,
-        task.body,
-        task.userId,
-        task.listId,
-        new Date(task.creationDate),
-        task.prev
-			)
-		})
-
-    return tasks;
-  } catch (error) {
-    console.log(error);
-  }
 };
 
-export const getTaskById = async (req: Request) => {
-  try {
-    const { taskId } = req.params;
-    const filter = {
-      id: taskId,
+/**
+ * Updates an existing task (text, description, completed) within a specific list. Ensures user has list access.
+ * Does not handle reordering; use a dedicated function for that.
+ * @param taskId - The ID of the task to update.
+ * @param listId - The ID of the list the task belongs to.
+ * @param userId - The ID of the user attempting the update.
+ * @param updateData - Object containing fields to update (e.g., text, description, completed).
+ * @returns A promise resolving to the updated task document or null if not found/error/no access.
+ */
+const updateTaskUnderList = async (taskId: string | Types.ObjectId, listId: string | Types.ObjectId, userId: string | Types.ObjectId, updateData: Partial<Pick<ITask, 'text' | 'description' | 'completed'>>): Promise<ITask | null> => {
+    try {
+        const list = await listService.getListById(listId, userId);
+        if (!list) {
+            console.log(`Access denied or list not found for listId: ${listId}, userId: ${userId}`);
+            return null;
+        }
+
+        const allowedUpdates: Partial<ITask> = {};
+        if (updateData.text !== undefined) {
+            if(updateData.text.trim() === '') throw new Error("Task text cannot be empty.");
+            allowedUpdates.text = updateData.text.trim();
+        }
+        if (updateData.description !== undefined) {
+             allowedUpdates.description = updateData.description.trim();
+        }
+        if (updateData.completed !== undefined) {
+            allowedUpdates.completed = updateData.completed;
+        }
+
+        if (Object.keys(allowedUpdates).length === 0) {
+            console.log("No valid fields provided for task update.");
+             return await Task.findOne({ _id: taskId, listId: listId }).exec();
+        }
+
+        const updatedTask = await Task.findOneAndUpdate(
+            { _id: taskId, listId: listId },
+            { $set: allowedUpdates },
+            { new: true, runValidators: true }
+        ).exec();
+
+        if (!updatedTask) {
+            console.log(`Task ${taskId} not found in list ${listId}.`);
+            return null;
+        }
+
+        console.log(`Task ${taskId} updated successfully in list ${listId}`);
+        return updatedTask;
+    } catch (error: any) {
+        console.error(`Error updating task ${taskId} in list ${listId}:`, error.message);
+        return null;
     }
-
-    const db = getDB();
-    const result = await db.collection("tasks").find(filter).toArray();
-
-		if(!result.length) return null;
-
-		const tasks = result.map((task: Task) => {
-			return new Task(
-				task.id,
-        task.title,
-        task.body,
-        task.userId,
-        task.listId,
-        new Date(task.creationDate),
-        task.prev
-			)
-		})
-
-    return tasks;
-  } catch (error) {
-    console.log(error);
-  }
 };
 
-export const addTask = async (req: Request) => {
-	try {
-		const newTask: Task = {
-			...req.body,
-      id: uuidv4(),
-			creationDate: new Date()
-		};
+/**
+ * Deletes a task from a specific list. Ensures user has list access.
+ * @param taskId - The ID of the task to delete.
+ * @param listId - The ID of the list the task belongs to.
+ * @param userId - The ID of the user attempting the deletion.
+ * @returns A promise resolving to the deleted task document or null if not found/error/no access.
+ */
+const deleteTaskUnderList = async (taskId: string | Types.ObjectId, listId: string | Types.ObjectId, userId: string | Types.ObjectId): Promise<ITask | null> => {
+    try {
+        const list = await listService.getListById(listId, userId);
+        if (!list) {
+            console.log(`Access denied or list not found for listId: ${listId}, userId: ${userId}`);
+            return null;
+        }
 
-		const db = getDB();
-		const query = await db.collection("tasks").insertOne({
-			...newTask,
-			creationDate: newTask.creationDate.toISOString(),
-		});
+        const deletedTask = await Task.findOneAndDelete({
+            _id: taskId,
+            listId: listId
+        }).exec();
 
-		const addedTaskData = await db.collection("tasks").findOne({ _id: query.insertedId });
-		return addedTaskData;
+        if (!deletedTask) {
+            console.log(`Task ${taskId} not found in list ${listId}.`);
+            return null;
+        }
 
-	} catch (error) {
-		console.log(error);
-	}
+        console.log(`Task ${deletedTask._id} deleted successfully from list ${listId}`);
+        return deletedTask;
+    } catch (error: any) {
+        console.error(`Error deleting task ${taskId} from list ${listId}:`, error.message);
+        return null;
+    }
 };
 
-export const updateTask = async (req: Request) => {
-  try {
-    const { taskId } = req.params;
-    const filter = {
-      id: taskId
-    };
-
-    const { _id, id, ...taskToUpdate } = req.body;
-   
-    const db = getDB();
-    const query = await db.collection("tasks").updateOne(filter, { $set: taskToUpdate });
-
-		const updatedTaskData = await db.collection("tasks").findOne({ _id: query.insertedId });
-    return updatedTaskData;
-
-  } catch (error) {
-    console.log(error);
-  }
+/**
+ * Deletes all tasks associated with a specific list ID.
+ * Intended for internal use, e.g., when a list is deleted.
+ * @param listId - The ID of the list whose tasks should be deleted.
+ * @returns A promise resolving to the result of the deleteMany operation.
+ */
+ const deleteTasksByListId = async (listId: string | Types.ObjectId): Promise<{ acknowledged: boolean; deletedCount: number }> => {
+    try {
+        const result = await Task.deleteMany({ listId: listId }).exec();
+        console.log(`Deleted ${result.deletedCount} tasks for list ${listId}`);
+        return result;
+    } catch (error: any) {
+        console.error(`Error deleting tasks for list ${listId}:`, error.message);
+        throw error;
+    }
 };
 
-export const deleteTask = async (req: Request) => {
-  try {
-    const { taskId } = req.params;
-    const filter = {
-      id: taskId
-    };
 
-    const db = getDB();
-    const result = await db.collection("tasks").deleteOne(filter);
-
-    return filter;
-
-  } catch (error) {
-    console.log(error);
-  }
+export const taskService = {
+    getTasksByListId,
+    getTaskByIdUnderList,
+    addTaskUnderList,
+    updateTaskUnderList,
+    deleteTaskUnderList,
+    deleteTasksByListId
+    // Add updateTaskOrder function here if needed later
 };

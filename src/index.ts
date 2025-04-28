@@ -1,39 +1,81 @@
+import connectDB from "./db.ts";
 import app from "./app.ts";
-import dotenv from "dotenv";
-import { connectDB, client } from "./db.ts";  
-
+import mongoose from 'mongoose';
 import https from "https";
 import fs from "fs";
+import path from "path";
 
-dotenv.config();
+const homeDir = process.env.HOME;
+if (!homeDir) {
+  console.error("HOME environment variable not set. Check Docker Compose environment section.");
+  process.exit(1);
+}
+const keyPath = path.join(homeDir, "localhost-key.pem");
+const certPath = path.join(homeDir, "localhost.pem");
 
-// console.log({home: process.env.HOME});
+if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+  console.error(`SSL certificate files not found in ${homeDir}. Check volume mounts and file paths.`);
+  console.error(`Expected key at: ${keyPath}`);
+  console.error(`Expected cert at: ${certPath}`);
+  process.exit(1);
+}
 
 const httpsOptions = {
-  key: fs.readFileSync(`${process.env.HOME}/localhost-key.pem`),
-  cert: fs.readFileSync(`${process.env.HOME}/localhost.pem`),
+  key: fs.readFileSync(keyPath),
+  cert: fs.readFileSync(certPath),
 };
 
 const startServer = async () => {
-  try { 
+  try {
     await connectDB();
 
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT || 5000;
 
-    // app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    https.createServer(httpsOptions, app).listen(PORT, () => {
-      console.log(`> Secure server running on ${PORT}`);
+    const server = https.createServer(httpsOptions, app).listen(PORT, () => {
+      console.log(`> Secure server running on port ${PORT}`);
+      console.log(`> Environment: ${process.env.NODE_ENV || 'not set'}`);
     });
+
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.syscall !== 'listen') {
+        throw error;
+      }
+      switch (error.code) {
+        case 'EACCES':
+          console.error(`Port ${PORT} requires elevated privileges`);
+          process.exit(1);
+          break;
+        case 'EADDRINUSE':
+          console.error(`Port ${PORT} is already in use`);
+          process.exit(1);
+          break;
+        default:
+          throw error;
+      }
+    });
+
   } catch (error: any) {
-    console.error("Error starting server:", error);
+    console.error("Error starting server:", error.message);
+    process.exit(1);
   }
 };
 
-process.on("SIGINT", async () => {
-  console.log("\nShutting down gracefully...");
-  await client.close(); 
-  console.log("MongoDB Disconnected");
-  process.exit(0);
-});
+// Graceful shutdown logic
+const shutdown = async (signal: string) => {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  try {
+    await mongoose.connection.close();
+    console.log("MongoDB connection closed.");
+    process.exit(0);
+  } catch (error) {
+    console.error("Error during graceful shutdown:", error);
+    process.exit(1);
+  }
+};
 
+// Listen for termination signals
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+// Start the server
 startServer();

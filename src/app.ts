@@ -1,53 +1,54 @@
 import express from "express";
-import cors from "cors";  
+import cors from "cors";
 import session from "express-session";
 import MongoStore from "connect-mongo";
-import dotenv from "dotenv";
-import listsRouter from "./routes/lists.ts";  
-import tasksRouter from "./routes/tasks.ts";  
-import usersRouter from "./routes/users.ts";  
+import mongoose from 'mongoose';
+import listsRouter from "./routes/lists.ts";
+import tasksRouter from "./routes/tasks.ts";
+import usersRouter from "./routes/users.ts";
 import authRouter from "./routes/auth.ts";
-
-dotenv.config();
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Session Configuration
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "supersecret",
+    secret: process.env.SESSION_SECRET || "fallback-supersecret",
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ 
-      mongoUrl: process.env.MONGO_URI, 
-      dbName: "task_manager",
-      collectionName: "sessions", 
-      ttl: 60 * 60
+    store: MongoStore.create({
+      // clientPromise: mongoose.connection.asPromise().then(conn => conn.getClient()), 
+      client: mongoose.connection.getClient(),
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
+      ttl: 14 * 24 * 60 * 60
     }),
-    cookie: { 
-      secure: true, 
-      httpOnly: true, 
-			sameSite: "none",
-			domain: "localhost",
-      maxAge: 1000 * 60 * 60 * 24 
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 7
     },
   })
 );
 
+// CORS Configuration
 app.use(
-	cors({
-		origin: 'https://localhost:3000',
-		methods: 'GET,POST,PUT,DELETE',
-		allowedHeaders: 'Content-Type,Authorization',
-		credentials: true,
-	})
+  cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type,Authorization',
+    credentials: true,
+  })
 );
 
+// Routes
 app.use('/', authRouter);
 app.use('/lists', listsRouter);
-app.use('/', tasksRouter);
+app.use('/lists/:listId/tasks', tasksRouter);
 app.use('/users', usersRouter);
 
 export default app;

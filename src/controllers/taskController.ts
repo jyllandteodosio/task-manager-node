@@ -1,182 +1,222 @@
 import { Request, Response } from "express";
-import * as taskService from "../services/taskService.ts";
+import { isValidObjectId } from 'mongoose';
+import { taskService } from "../services/taskService.ts";
 
-export const testConnect = (req: Request, res: Response) => {
-  res.json({ message: "connected to taskController" });
-};
-
-export const getTasksByListId = async (req: Request, res: Response) => {
+/**
+ * Gets all tasks for a specific list, checking user access.
+ * Assumes listId is in req.params.
+ */
+export const getTasksByListId = async (req: Request, res: Response): Promise<void> => {
   try {
-    const tasks = await taskService.getTasksByListId(req);
+    const userId = req.session.userId;
+    const { listId } = req.params;
 
-    const response = {
-      message: "GET TASKS BY LIST ID: Successfully fetched tasks",
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized: User not logged in." });
+      return;
+    }
+    if (!isValidObjectId(listId)) {
+      res.status(400).json({ message: "Invalid list ID format." });
+      return;
+    }
+
+    const tasks = await taskService.getTasksByListId(listId, userId);
+
+    if (tasks === null) {
+      res.status(404).json({ message: "List not found or access denied." });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Successfully fetched tasks for list",
       result: tasks,
-    };
+    });
 
-    console.log(response);
-    res.json(response);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getTasksByListId controller:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-export const getTaskByIdUnderList = async (req: Request, res: Response) => {
+/**
+ * Gets a specific task within a list, checking user access.
+ * Assumes listId and taskId are in req.params.
+ */
+export const getTaskByIdUnderList = async (req: Request, res: Response): Promise<void> => {
   try {
-    const tasks = await taskService.getTaskByIdUnderList(req);
+    const userId = req.session.userId;
+    const { listId, taskId } = req.params;
 
-    const response = {
-      message: "GET TASK BY ID UNDER LIST: Successfully fetched tasks",
-      result: tasks,
-    };
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized: User not logged in." });
+      return;
+    }
+    if (!isValidObjectId(listId)) {
+      res.status(400).json({ message: "Invalid list ID format." });
+      return;
+    }
+    if (!isValidObjectId(taskId)) {
+      res.status(400).json({ message: "Invalid task ID format." });
+      return;
+    }
 
-    console.log(response);
-    res.json(response);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
+    const task = await taskService.getTaskByIdUnderList(taskId, listId, userId);
 
-export const addTaskUnderList = async (req: Request, res: Response) => {
-  try {
-    const tasks = await taskService.addTaskUnderList(req);
+    if (!task) {
+      res.status(404).json({ message: "Task not found or access denied." });
+      return;
+    }
 
-    const response = {
-      message: "ADD TASK UNDER LIST: Successfully added task",
-      result: tasks,
-    };
-
-    console.log(response);
-    res.json(response);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const updateTaskUnderList = async (req: Request, res: Response) => {
-  try {
-    const tasks = await taskService.updateTaskUnderList(req);
-
-    const response = {
-      message: "UPDATE TASK UNDER LIST: Successfully updated task",
-      result: tasks,
-    };
-
-    console.log(response);
-    res.json(response);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const deleteTaskUnderList = async (req: Request, res: Response) => {
-  try {
-    const tasks = await taskService.deleteTaskUnderList(req);
-
-    const response = {
-      message: "DELETE TASK UNDER LIST: Successfully deleted task",
-      result: tasks,
-    };
-
-    console.log(response);
-    res.json(response);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const getTasks = async (req: Request, res: Response) => {
-  try {
-    const tasks = await taskService.getTasks();
-
-    const response = {
-      message: "GET TASKS: Successfully fetched tasks",
-      result: tasks,
-    };
-
-    console.log(response);
-    res.json(response);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const getTaskByUser = async (req: Request, res: Response) => {
-  try {
-    const tasks = await taskService.getTaskByUser(req);
-
-    const response = {
-      message: "GET TASKS BY USER ID: Successfully fetched tasks",
-      result: tasks,
-    };
-
-    console.log(response);
-    res.json(response);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const getTaskById = async (req: Request, res: Response) => {
-  try {
-    const tasks = await taskService.getTaskById(req);
-
-    const response = {
-      message: "GET TASK BY ID: Successfully fetched task",
-      result: tasks,
-    };
-
-    console.log(response);
-    res.json(response);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const addTask = async (req: Request, res: Response) => {
-  try {
-    const task = await taskService.addTask(req);
-
-    const response = {
-      message: "ADD TASK: Successfully added task",
+    res.status(200).json({
+      message: "Successfully fetched task",
       result: task,
-    };
+    });
 
-    console.log(response);
-    res.json(response);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getTaskByIdUnderList controller:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-export const updateTask = async (req: Request, res: Response) => {
+/**
+ * Adds a task to a specific list, checking user access.
+ * Assumes listId is in req.params and task data (text, description) is in req.body.
+ */
+export const addTaskUnderList = async (req: Request, res: Response): Promise<void> => {
   try {
-    const task = await taskService.updateTask(req);
+    const userId = req.session.userId;
+    const { listId } = req.params;
+    const taskData = req.body;
 
-    const response = {
-      message: "UPDATE TASK: Successfully updated task",
-      result: task,
-    };
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized: User not logged in." });
+      return;
+    }
+    if (!isValidObjectId(listId)) {
+      res.status(400).json({ message: "Invalid list ID format." });
+      return;
+    }
+    if (!taskData.text || typeof taskData.text !== 'string' || taskData.text.trim() === '') {
+      res.status(400).json({ message: "Task text is required and cannot be empty." });
+      return;
+    }
 
-    console.log(response);
-    res.json(response);
+    const newTask = await taskService.addTaskUnderList(taskData, listId, userId);
+
+    if (!newTask) {
+      res.status(403).json({ message: "Failed to add task. Check list access or server logs." });
+      return;
+    }
+
+    res.status(201).json({
+      message: "Successfully added task",
+      result: newTask,
+    });
+
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in addTaskUnderList controller:", error);
+    if (error.message === "Task text cannot be empty.") {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Internal server error", error: error.message });
+    }
   }
 };
 
-export const deleteTask = async (req: Request, res: Response) => {
+/**
+ * Updates a specific task within a list, checking user access.
+ * Assumes listId and taskId are in req.params and update data is in req.body.
+ */
+export const updateTaskUnderList = async (req: Request, res: Response): Promise<void> => {
   try {
-    const task = await taskService.deleteTask(req);
+    const userId = req.session.userId;
+    const { listId, taskId } = req.params;
+    const updateData = req.body;
 
-    const response = {
-      message: "DELETE TASK: Successfully deleted task",
-      result: task,
-    };
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized: User not logged in." });
+      return;
+    }
+    if (!isValidObjectId(listId)) {
+      res.status(400).json({ message: "Invalid list ID format." });
+      return;
+    }
+    if (!isValidObjectId(taskId)) {
+      res.status(400).json({ message: "Invalid task ID format." });
+      return;
+    }
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({ message: "No update data provided." });
+    }
 
-    console.log(response);
-    res.json(response);
+    const updatedTask = await taskService.updateTaskUnderList(taskId, listId, userId, updateData);
+
+    if (!updatedTask) {
+      res.status(404).json({ message: "Task not found, access denied, or update failed." });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Successfully updated task",
+      result: updatedTask,
+    });
+
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in updateTaskUnderList controller:", error);
+    if (error.message === "Task text cannot be empty.") {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Internal server error", error: error.message });
+    }
   }
 };
+
+/**
+ * Deletes a specific task within a list, checking user access.
+ * Assumes listId and taskId are in req.params.
+ */
+export const deleteTaskUnderList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.session.userId;
+    const { listId, taskId } = req.params;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized: User not logged in." });
+      return;
+    }
+    if (!isValidObjectId(listId)) {
+      res.status(400).json({ message: "Invalid list ID format." });
+      return;
+    }
+    if (!isValidObjectId(taskId)) {
+      res.status(400).json({ message: "Invalid task ID format." });
+      return;
+    }
+
+    const deletedTask = await taskService.deleteTaskUnderList(taskId, listId, userId);
+
+    if (!deletedTask) {
+      res.status(404).json({ message: "Task not found or access denied." });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Successfully deleted task",
+      result: { taskId: deletedTask._id },
+    });
+
+  } catch (error: any) {
+    console.error("Error in deleteTaskUnderList controller:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+const taskController = {
+  getTasksByListId,
+  getTaskByIdUnderList,
+  addTaskUnderList,
+  updateTaskUnderList,
+  deleteTaskUnderList
+};
+
+export default taskController;

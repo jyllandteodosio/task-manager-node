@@ -1,71 +1,127 @@
 import { Request, Response } from "express";
-import { userService } from "../services/userService.ts"
+import { userService } from "../services/userService.ts";
+import { isValidObjectId } from 'mongoose';
 
-const getUserById = async (req: Request, res: Response) => {
+const getUserById = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const users = await userService.getUserById(req);
+		const { id } = req.params;
 
-		const response = {
-			message: "GET USER BY ID: Successfully fetched user",
-			result: users,
-		};
-
-		console.log(response);
-		res.json(response);
-	} catch (error: any) {
-		res.status(500).json({ error: error.message });
-	}
-};
-
-const addUser = async (req: Request, res: Response) => {
-	try {
-		const user = await userService.addUser(req);
-		const response = {
-			message: "REGISTER USER: Successfully registered user",
-			result: {},
-		};
-
-		if (user) {
-			response.message = "REGISTER USER: Successfully registered user";
-			response.result = { userId: user };
+		if (!isValidObjectId(id)) {
+			res.status(400).json({ message: "Invalid user ID format." });
+			return;
 		}
 
-		console.log(response);
-		res.json(response);
+		const user = await userService.getUserById(id);
+
+		if (!user) {
+			res.status(404).json({ message: "User not found." });
+			return;
+		}
+
+		const { password, ...userResponse } = user.toObject();
+
+		res.status(200).json({
+			message: "Successfully fetched user",
+			result: userResponse,
+		});
+
 	} catch (error: any) {
-		res.status(500).json({ error: error.message });
+		console.error("Error in getUserById controller:", error);
+		res.status(500).json({ message: "Internal server error", error: error.message });
 	}
 };
 
-const updateUser = async (req: Request, res: Response) => {
+const addUser = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const user = await userService.updateUser(req);
+		const userData = req.body;
 
-		const response = {
-			message: "UPDATE USER: Successfully updated user",
-			result: user,
-		};
+		if (!userData.username || !userData.password) {
+			res.status(400).json({ message: "Username and password are required." });
+			return;
+		}
 
-		console.log(response);
-		res.json(response);
+		const newUser = await userService.addUser(userData);
+
+		if (!newUser) {
+			res.status(409).json({ message: "Failed to register user. Username might already exist." });
+			return;
+		}
+
+		const { password, ...userResponse } = newUser.toObject();
+
+		res.status(201).json({
+			message: "Successfully registered user",
+			result: userResponse,
+		});
+
 	} catch (error: any) {
-		res.status(500).json({ error: error.message });
+		console.error("Error in addUser controller:", error);
+		res.status(500).json({ message: "Internal server error", error: error.message });
 	}
 };
 
-const deleteUser = async (req: Request, res: Response) => {
+const updateUser = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const user = await userService.deleteUser(req);
+		const { id } = req.params;
+		const updateData = req.body;
 
-		const response = {
-			message: "DELETE USER: Successfully deleted user",
-			result: user,
-		};
+		if (!isValidObjectId(id)) {
+			res.status(400).json({ message: "Invalid user ID format." });
+			return;
+		}
 
-		console.log(response);
-		res.json(response);
+		delete updateData.username;
+		delete updateData._id;
+
+		if (Object.keys(updateData).length === 0) {
+			res.status(400).json({ message: "No update data provided." });
+			return;
+		}
+
+		const updatedUser = await userService.updateUser(id, updateData);
+
+		if (!updatedUser) {
+			res.status(404).json({ message: "User not found or update failed." });
+			return;
+		}
+
+		const { password, ...userResponse } = updatedUser.toObject();
+
+		res.status(200).json({
+			message: "Successfully updated user",
+			result: userResponse,
+		});
+
 	} catch (error: any) {
-		res.status(500).json({ error: error.message });
+		console.error("Error in updateUser controller:", error);
+		res.status(500).json({ message: "Internal server error", error: error.message });
+	}
+};
+
+const deleteUser = async (req: Request, res: Response): Promise<void> => {
+	try {
+		const { id } = req.params;
+
+		if (!isValidObjectId(id)) {
+			res.status(400).json({ message: "Invalid user ID format." });
+			return;
+		}
+
+		const deletedUser = await userService.deleteUser(id);
+
+		if (!deletedUser) {
+			res.status(404).json({ message: "User not found." });
+			return;
+		}
+
+		res.status(200).json({
+			message: "Successfully deleted user",
+			result: { userId: deletedUser._id },
+		});
+
+	} catch (error: any) {
+		console.error("Error in deleteUser controller:", error);
+		res.status(500).json({ message: "Internal server error", error: error.message });
 	}
 };
 

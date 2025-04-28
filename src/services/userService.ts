@@ -1,118 +1,109 @@
-import { Request } from "express";
-import { v4 as uuidv4 } from 'uuid';
 import bcrypt from "bcryptjs";
-import { getDB } from "../db.ts";
-import User from '../models/userModel.ts';
+import User, { IUser } from '../models/userModel.ts';
 
 const saltRounds = 10;
 
-const getUserById = async (req: Request) => {
-  try {
-    const { id } = req.params;
-
-    const db = getDB();
-    const result = await db.collection("users").find({ id: id }).toArray();
-
-		if(!result.length) return null;
-
-		const users = result.map((user: User) => {
-			return new User(
-				user.id,
-				user.username,
-				user.password,
-				user.firstName,
-				user.lastName,
-				user.creationDate
-			)
-		})
-
-    return users;
-  } catch (error) {
-    console.log(error);
-  }
+/**
+ * Finds a user by their MongoDB _id.
+ * @param userId - The MongoDB _id of the user to find.
+ * @returns A promise that resolves to the user document or null if not found.
+ */
+const getUserById = async (userId: string): Promise<IUser | null> => {
+    try {
+        const user = await User.findById(userId).exec();
+        return user;
+    } catch (error) {
+        console.error(`Error fetching user by ID ${userId}:`, error);
+        return null;
+    }
 };
 
-const addUser = async (req: Request) => {
-	try {
-		const newUser: User = {
-			...req.body,
-			id: uuidv4(),
-			creationDate: new Date()
-		};
+/**
+ * Creates a new user. Password hashing is handled by the pre-save hook in the User model.
+ * @param userData - An object containing user data (username, password, etc.).
+ * @returns A promise that resolves to the newly created user document or null on error.
+ */
+const addUser = async (userData: Partial<IUser>): Promise<IUser | null> => {
+    try {
+        if (!userData.username || !userData.password) {
+            throw new Error("Username and password are required to create a user.");
+        }
 
-		const password = req.body.password;
-		const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const newUser = await User.create(userData);
+        console.log(`User created successfully with ID: ${newUser._id}`);
+        return newUser;
+    } catch (error: any) {
+        console.error("Error adding user:", error.message);
 
-		const db = getDB();
-		const query = await db.collection("users").insertOne({
-			...newUser,
-			creationDate: newUser.creationDate.toISOString(),
-			password: hashedPassword,
-		});
-
-		const result = await db.collection("users").findOne({ _id: query.insertedId });
-
-		const user = new User(
-			result.id,
-			result.username,
-			result.password,
-			result.firstName,
-			result.lastName,
-			result.creationDate
-		);
-
-		return user.id;
-
-	} catch (error) {
-		console.log(error);
-	}
+        if (error.code === 11000) {
+            console.error("Username already exists.");
+        }
+        return null;
+    }
 };
 
-const updateUser = async (req: Request) => {
-  try {
-    const { id } = req.params;
-    const filter = { id: id };
+/**
+ * Updates an existing user by their MongoDB _id.
+ * Hashes the password explicitly if it's included in the update data.
+ * @param userId - The MongoDB _id of the user to update.
+ * @param updateData - An object containing the fields to update.
+ * @returns A promise that resolves to the updated user document or null if not found/error.
+ */
+const updateUser = async (userId: string, updateData: Partial<IUser>): Promise<IUser | null> => {
+    try {
+        if (updateData.password) {
+            updateData.password = await bcrypt.hash(updateData.password, saltRounds);
+        } else {
+            delete updateData.password;
+        }
 
-    const { _id, id: userId, password, ...userToUpdate } = req.body;
-		const hashedPassword = await bcrypt.hash(password, saltRounds);
-   
-    const db = getDB();
-    const query = await db.collection("users").updateOne(filter, { $set: {
-      ...userToUpdate,
-      password: hashedPassword,
-    } });
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).exec();
 
-		const result = await db.collection("users").findOne({ _id: query.insertedId });
+        if (!updatedUser) {
+            console.log(`User with ID ${userId} not found for update.`);
+            return null;
+        }
 
-    const user = new User(
-			result.id,
-			result.username,
-			result.password,
-			result.firstName,
-			result.lastName,
-			result.creationDate
-		);
-
-		return user.id;
-
-  } catch (error) {
-    console.log(error);
-  }
+        console.log(`User updated successfully: ${updatedUser._id}`);
+        return updatedUser;
+    } catch (error: any) {
+        console.error(`Error updating user ${userId}:`, error.message);
+        if (error.code === 11000) {
+            console.error("Username already exists during update.");
+        }
+        return null;
+    }
 };
 
-const deleteUser = async (req: Request) => {
-  try {
-    const { id } = req.params;
-    const filter = { id: id };
+/**
+ * Deletes a user by their MongoDB _id.
+ * @param userId - The MongoDB _id of the user to delete.
+ * @returns A promise that resolves to the deleted user document or null if not found/error.
+ */
+const deleteUser = async (userId: string): Promise<IUser | null> => {
+    try {
+        const deletedUser = await User.findByIdAndDelete(userId).exec();
 
-    const db = getDB();
-    const result = await db.collection("users").deleteOne(filter);
+        if (!deletedUser) {
+            console.log(`User with ID ${userId} not found for deletion.`);
+            return null;
+        }
 
-    return filter;
-
-  } catch (error) {
-    console.log(error);
-  }
+        console.log(`User deleted successfully: ${deletedUser._id}`);
+        return deletedUser;
+    } catch (error) {
+        console.error(`Error deleting user ${userId}:`, error);
+        return null;
+    }
 };
 
-export const userService = { getUserById, addUser, updateUser, deleteUser }
+export const userService = {
+    getUserById,
+    addUser,
+    updateUser,
+    deleteUser
+};

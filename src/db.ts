@@ -1,27 +1,33 @@
-import { MongoClient } from 'mongodb';
-import dotenv from "dotenv";
-import { config } from "./config.ts";
+import mongoose from 'mongoose';
 
-const client = new MongoClient(config.database.MONGO_URI);
-let db: any;
+/**
+ * Establishes a connection to the MongoDB database using Mongoose.
+ * Relies on the database name being part of the MONGO_URI string.
+ */
+const connectDB = async (): Promise<void> => {
+  if (mongoose.connection.readyState >= 1) {
+    // console.log('MongoDB already connected.');
+    return;
+  }
 
-const connectDB = async () => {
-  if (db) return db;
   try {
-    await client.connect();
-    db = client.db(config.database.DB_NAME);
-    console.log('MongoDB Connected');
+    console.log(`process.env.MONGO_URI: ${process.env.MONGO_URI}`);
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/task_manager_fallback');
+
+    console.log(`MongoDB Connected Successfully via Mongoose to database: ${mongoose.connection.name}`);
+
+    mongoose.connection.on('error', (err) => {
+      console.error('Mongoose connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('Mongoose connection disconnected');
+    });
+
   } catch (error: any) {
-    console.error('MongoDB Connection Error:', error.message);
-    process.exit(1);
+    console.error('Initial MongoDB Connection Failed:', error.message);
+    process.exit(1); // Exit process with failure
   }
 };
 
-const getDB = () => {
-  if (!db) {
-    console.error('Database not initialized. Call connectDB() first.');
-  }
-  return db;
-};
-
-export { connectDB, getDB, client };
+export default connectDB;
