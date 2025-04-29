@@ -107,6 +107,10 @@ export const updateList = async (req: Request, res: Response): Promise<void> => 
 		const { listId } = req.params;
 		const updateData = req.body;
 
+		console.log("User ID:", userId);
+		console.log("List ID:", listId);
+		console.log("Update data:", updateData);
+
 		if (!userId) {
 			res.status(401).json({ message: "Unauthorized: User not logged in." });
 			return;

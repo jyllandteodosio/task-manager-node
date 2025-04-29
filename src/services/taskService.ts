@@ -18,8 +18,8 @@ const getTasksByListId = async (listId: string | Types.ObjectId, userId: string 
             return null;
         }
         const tasks = await Task.find({ listId: listId })
-                                .sort({ order: 1 })
-                                .exec();
+            .sort({ order: 1 })
+            .exec();
         return tasks;
     } catch (error: any) {
         console.error(`Error fetching tasks for list ${listId}:`, error.message);
@@ -52,12 +52,12 @@ const getTaskByIdUnderList = async (taskId: string | Types.ObjectId, listId: str
 /**
  * Adds a new task (with optional description) to a specific list, ensuring user has list access.
  * Assigns an order based on the current highest order + 1.
- * @param taskData - Object containing task properties (e.g., text, description).
+ * @param taskData - Object containing task properties (e.g., title, description).
  * @param listId - The ID of the list to add the task to.
  * @param userId - The ID of the user adding the task.
  * @returns A promise resolving to the newly created task document or null on error/no access.
  */
-const addTaskUnderList = async (taskData: Partial<Pick<ITask, 'text' | 'description'>>, listId: string | Types.ObjectId, userId: string | Types.ObjectId): Promise<ITask | null> => {
+const addTaskUnderList = async (taskData: Partial<Pick<ITask, 'title' | 'description'>>, listId: string | Types.ObjectId, userId: string | Types.ObjectId): Promise<ITask | null> => {
     try {
         const list = await listService.getListById(listId, userId);
         if (!list) {
@@ -65,16 +65,16 @@ const addTaskUnderList = async (taskData: Partial<Pick<ITask, 'text' | 'descript
             return null;
         }
 
-        if (!taskData.text || taskData.text.trim() === '') {
-             throw new Error("Task text cannot be empty.");
+        if (!taskData.title || taskData.title.trim() === '') {
+            throw new Error("Task title cannot be empty.");
         }
 
         const lastTask = await Task.findOne({ listId }).sort({ order: -1 }).select('order').exec();
         const newOrder = lastTask ? lastTask.order + 1 : 0;
 
         const newTask = await Task.create({
-            text: taskData.text.trim(),
-            description: taskData.description?.trim(), 
+            title: taskData.title.trim(),
+            description: taskData.description?.trim(),
             listId: listId,
             createdBy: userId,
             order: newOrder,
@@ -90,15 +90,15 @@ const addTaskUnderList = async (taskData: Partial<Pick<ITask, 'text' | 'descript
 };
 
 /**
- * Updates an existing task (text, description, completed) within a specific list. Ensures user has list access.
+ * Updates an existing task (title, description, completed) within a specific list. Ensures user has list access.
  * Does not handle reordering; use a dedicated function for that.
  * @param taskId - The ID of the task to update.
  * @param listId - The ID of the list the task belongs to.
  * @param userId - The ID of the user attempting the update.
- * @param updateData - Object containing fields to update (e.g., text, description, completed).
+ * @param updateData - Object containing fields to update (e.g., title, description, completed).
  * @returns A promise resolving to the updated task document or null if not found/error/no access.
  */
-const updateTaskUnderList = async (taskId: string | Types.ObjectId, listId: string | Types.ObjectId, userId: string | Types.ObjectId, updateData: Partial<Pick<ITask, 'text' | 'description' | 'completed'>>): Promise<ITask | null> => {
+const updateTaskUnderList = async (taskId: string | Types.ObjectId, listId: string | Types.ObjectId, userId: string | Types.ObjectId, updateData: Partial<Pick<ITask, 'title' | 'description' | 'completed'>>): Promise<ITask | null> => {
     try {
         const list = await listService.getListById(listId, userId);
         if (!list) {
@@ -107,12 +107,12 @@ const updateTaskUnderList = async (taskId: string | Types.ObjectId, listId: stri
         }
 
         const allowedUpdates: Partial<ITask> = {};
-        if (updateData.text !== undefined) {
-            if(updateData.text.trim() === '') throw new Error("Task text cannot be empty.");
-            allowedUpdates.text = updateData.text.trim();
+        if (updateData.title !== undefined) {
+            if (updateData.title.trim() === '') throw new Error("Task title cannot be empty.");
+            allowedUpdates.title = updateData.title.trim();
         }
         if (updateData.description !== undefined) {
-             allowedUpdates.description = updateData.description.trim();
+            allowedUpdates.description = updateData.description.trim();
         }
         if (updateData.completed !== undefined) {
             allowedUpdates.completed = updateData.completed;
@@ -120,7 +120,7 @@ const updateTaskUnderList = async (taskId: string | Types.ObjectId, listId: stri
 
         if (Object.keys(allowedUpdates).length === 0) {
             console.log("No valid fields provided for task update.");
-             return await Task.findOne({ _id: taskId, listId: listId }).exec();
+            return await Task.findOne({ _id: taskId, listId: listId }).exec();
         }
 
         const updatedTask = await Task.findOneAndUpdate(
@@ -181,7 +181,7 @@ const deleteTaskUnderList = async (taskId: string | Types.ObjectId, listId: stri
  * @param listId - The ID of the list whose tasks should be deleted.
  * @returns A promise resolving to the result of the deleteMany operation.
  */
- const deleteTasksByListId = async (listId: string | Types.ObjectId): Promise<{ acknowledged: boolean; deletedCount: number }> => {
+const deleteTasksByListId = async (listId: string | Types.ObjectId): Promise<{ acknowledged: boolean; deletedCount: number }> => {
     try {
         const result = await Task.deleteMany({ listId: listId }).exec();
         console.log(`Deleted ${result.deletedCount} tasks for list ${listId}`);

@@ -80,7 +80,7 @@ export const getTaskByIdUnderList = async (req: Request, res: Response): Promise
 
 /**
  * Adds a task to a specific list, checking user access.
- * Assumes listId is in req.params and task data (text, description) is in req.body.
+ * Assumes listId is in req.params and task data (title, description) is in req.body.
  */
 export const addTaskUnderList = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -92,12 +92,13 @@ export const addTaskUnderList = async (req: Request, res: Response): Promise<voi
       res.status(401).json({ message: "Unauthorized: User not logged in." });
       return;
     }
+
     if (!isValidObjectId(listId)) {
       res.status(400).json({ message: "Invalid list ID format." });
       return;
     }
-    if (!taskData.text || typeof taskData.text !== 'string' || taskData.text.trim() === '') {
-      res.status(400).json({ message: "Task text is required and cannot be empty." });
+    if (!taskData.title || typeof taskData.title !== 'string' || taskData.title.trim() === '') {
+      res.status(400).json({ message: "Task title is required and cannot be empty." });
       return;
     }
 
@@ -115,7 +116,7 @@ export const addTaskUnderList = async (req: Request, res: Response): Promise<voi
 
   } catch (error: any) {
     console.error("Error in addTaskUnderList controller:", error);
-    if (error.message === "Task text cannot be empty.") {
+    if (error.message === "Task title cannot be empty.") {
       res.status(400).json({ message: error.message });
     } else {
       res.status(500).json({ message: "Internal server error", error: error.message });
@@ -163,7 +164,7 @@ export const updateTaskUnderList = async (req: Request, res: Response): Promise<
 
   } catch (error: any) {
     console.error("Error in updateTaskUnderList controller:", error);
-    if (error.message === "Task text cannot be empty.") {
+    if (error.message === "Task title cannot be empty.") {
       res.status(400).json({ message: error.message });
     } else {
       res.status(500).json({ message: "Internal server error", error: error.message });

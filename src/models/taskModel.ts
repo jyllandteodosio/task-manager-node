@@ -2,7 +2,7 @@ import mongoose, { Document, Schema, Model, Types } from 'mongoose';
 
 export interface ITask extends Document {
 	_id: Types.ObjectId;
-	text: string;
+	title: string;
 	description?: string;
 	completed: boolean;
 	listId: Types.ObjectId;
@@ -12,9 +12,9 @@ export interface ITask extends Document {
 }
 
 const taskSchema = new Schema<ITask>({
-	text: {
+	title: {
 		type: String,
-		required: [true, 'Task text cannot be empty'],
+		required: [true, 'Task title cannot be empty'],
 		trim: true,
 	},
 	description: {

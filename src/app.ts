@@ -48,7 +48,7 @@ app.use(
 // Routes
 app.use('/', authRouter);
 app.use('/lists', listsRouter);
-app.use('/lists/:listId/tasks', tasksRouter);
+app.use('/lists', tasksRouter);
 app.use('/users', usersRouter);
 
 export default app;
