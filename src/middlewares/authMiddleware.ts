@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 const isAuthenticated = (req: Request, res: Response, next: NextFunction): void => {
-	console.log({ reqSession: req.session });
+	// console.log({ reqSession: req.session });
 	if (req.session && req.session.userId && req.session.isAuthenticated) {
 		try {
 			next();

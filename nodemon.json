@@ -1,7 +1,9 @@
 {
-  "watch": ["src"],
+  "watch": [
+    "src"
+  ],
   "ext": "ts",
   "execMap": {
-		"ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm"
-	}
+    "ts": "node --inspect --trace-uncaught --no-warnings=ExperimentalWarning --loader ts-node/esm"
+  }
 }

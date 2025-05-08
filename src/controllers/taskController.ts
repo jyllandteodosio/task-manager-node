@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { isValidObjectId } from 'mongoose';
 import { taskService } from "../services/taskService.ts";
+import { Server } from "socket.io";
 
 /**
  * Gets all tasks for a specific list, checking user access.
@@ -109,6 +110,14 @@ export const addTaskUnderList = async (req: Request, res: Response): Promise<voi
       return;
     }
 
+    const io: Server = req.app.get('socketio');
+    if (io) {
+      io.to(listId).emit('taskAdded', { listId: listId, task: newTask, message: 'A task was added' });
+      console.log(`Emitted 'taskAdded' for list ${listId} after adding task ${newTask._id}`);
+    } else {
+      console.warn("Socket.IO instance not found on app.");
+    }
+
     res.status(201).json({
       message: "Successfully added task",
       result: newTask,
@@ -157,6 +166,14 @@ export const updateTaskUnderList = async (req: Request, res: Response): Promise<
       return;
     }
 
+    const io: Server = req.app.get('socketio');
+    if (io) {
+      io.to(listId).emit('taskEdited', { listId: listId, task: updatedTask, message: 'A task was updated' });
+      console.log(`Emitted 'taskEdited' for list ${listId} after updating task ${updatedTask._id}`);
+    } else {
+      console.warn("Socket.IO instance not found on app.");
+    }
+
     res.status(200).json({
       message: "Successfully updated task",
       result: updatedTask,
@@ -199,6 +216,14 @@ export const deleteTaskUnderList = async (req: Request, res: Response): Promise<
     if (!deletedTask) {
       res.status(404).json({ message: "Task not found or access denied." });
       return;
+    }
+
+    const io: Server = req.app.get('socketio');
+    if (io) {
+      io.to(listId).emit('taskDeleted', { listId: listId, taskId: deletedTask._id, message: 'A task was deleted' });
+      console.log(`Emitted 'taskDeleted' for list ${listId} after deleting task ${deletedTask._id}`);
+    } else {
+      console.warn("Socket.IO instance not found on app.");
     }
 
     res.status(200).json({

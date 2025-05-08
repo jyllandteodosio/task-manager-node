@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { listService } from "../services/listService.ts";
 import { isValidObjectId } from 'mongoose';
+import { Server } from "socket.io";
 
 /**
  * Gets all lists accessible by the logged-in user.
@@ -107,10 +108,6 @@ export const updateList = async (req: Request, res: Response): Promise<void> => 
 		const { listId } = req.params;
 		const updateData = req.body;
 
-		console.log("User ID:", userId);
-		console.log("List ID:", listId);
-		console.log("Update data:", updateData);
-
 		if (!userId) {
 			res.status(401).json({ message: "Unauthorized: User not logged in." });
 			return;
@@ -182,7 +179,7 @@ export const addCollaborator = async (req: Request, res: Response): Promise<void
 	try {
 		const ownerId = req.session.userId;
 		const { listId } = req.params;
-		const { collaboratorId } = req.body;
+		const { collaboratorId } = req.params;
 
 		if (!ownerId) {
 			res.status(401).json({ message: "Unauthorized: User not logged in." });
@@ -200,8 +197,24 @@ export const addCollaborator = async (req: Request, res: Response): Promise<void
 		const updatedList = await listService.addCollaborator(listId, collaboratorId, ownerId);
 
 		if (!updatedList) {
-			res.status(403).json({ message: "Failed to add collaborator. Check permissions or if user is already a collaborator." });
+			res.status(403).json({ message: "List is already shared with this user." });
 			return;
+		}
+
+		const io: Server = req.app.get('socketio');
+		if (io) {
+			const sockets = await io.fetchSockets();
+			const collaboratorSocket = sockets.find((socket) => socket.data.userId === collaboratorId);
+
+			if (collaboratorSocket) {
+				collaboratorSocket.join(listId);
+				console.log(`User ${collaboratorId} joined room ${listId}`);
+			}
+
+			io.to(listId).emit('addCollaborator', { listId: listId, collaboratorId: collaboratorId, ownerId: ownerId });
+			console.log(`Emitted 'addCollaborator' for list ${listId} after adding collaborator ${collaboratorId}`);
+		} else {
+			console.warn("Socket.IO instance not found on app.");
 		}
 
 		res.status(200).json({
@@ -241,6 +254,22 @@ export const removeCollaborator = async (req: Request, res: Response): Promise<v
 		if (!updatedList) {
 			res.status(403).json({ message: "Failed to remove collaborator. Check permissions or collaborator status." });
 			return;
+		}
+
+		const io: Server = req.app.get('socketio');
+		if (io) {
+			const sockets = await io.fetchSockets();
+			const collaboratorSocket = sockets.find((socket) => socket.data.userId === collaboratorId);
+
+			if (collaboratorSocket) {
+				collaboratorSocket.join(listId);
+				console.log(`User ${collaboratorId} joined room ${listId}`);
+			}
+
+			io.to(listId).emit('removeCollaborator', { listId: listId, collaboratorId: collaboratorId, ownerId: ownerId });
+			console.log(`Emitted 'removeCollaborator' for list ${listId} after removing collaborator ${collaboratorId}`);
+		} else {
+			console.warn("Socket.IO instance not found on app.");
 		}
 
 		res.status(200).json({

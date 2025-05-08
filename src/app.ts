@@ -14,13 +14,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session Configuration
-app.use(
+app.use((req, res, next) => {
+  if (req.url.startsWith('/socket.io/')) {
+    return next();
+  }
+
   session({
     secret: process.env.SESSION_SECRET || "fallback-supersecret",
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-      // clientPromise: mongoose.connection.asPromise().then(conn => conn.getClient()), 
       client: mongoose.connection.getClient(),
       mongoUrl: process.env.MONGO_URI,
       collectionName: "sessions",
@@ -32,18 +35,21 @@ app.use(
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60 * 24 * 7
     },
-  })
-);
+  })(req, res, next);
+});
 
 // CORS Configuration
-app.use(
+app.use((req, res, next) => {
+  if (req.url.startsWith('/socket.io/')) {
+    return next();
+  }
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN || 'https://localhost:3000',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type,Authorization',
     credentials: true,
-  })
-);
+  })(req, res, next);
+});
 
 // Routes
 app.use('/', authRouter);

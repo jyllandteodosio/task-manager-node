@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import https from "https";
 import fs from "fs";
 import path from "path";
+import { Server } from "socket.io";
 
 const homeDir = process.env.HOME;
 if (!homeDir) {
@@ -31,7 +32,47 @@ const startServer = async () => {
 
     const PORT = process.env.PORT || 5000;
 
-    const server = https.createServer(httpsOptions, app).listen(PORT, () => {
+    const server = https.createServer(httpsOptions, app);
+
+    const io = new Server(server, {
+      cors: {
+        origin: process.env.CORS_ORIGIN || 'https://localhost:3000',
+        methods: ["GET", "POST"],
+        credentials: true,
+      }
+    });
+    console.log("Socket.IO server initialized successfully.");
+
+    app.set('socketio', io);
+
+    io.on('connection', (socket) => {
+      console.log('A user connected');
+
+      const userId = socket.handshake.query.userId;
+      socket.data.userId = userId;
+
+      console.log(`Socket ${socket.id} is associated with user ${userId}`);
+
+      socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+      });
+
+      socket.on('joinList', (listId: string) => {
+        socket.join(listId);
+        console.log(`User ${userId} joined list room: ${listId}`);
+      });
+
+      socket.on('leaveList', (listId: string) => {
+        socket.leave(listId);
+        console.log(`User ${userId} left list room: ${listId}`);
+      });
+
+      socket.on('error', (error: any) => {
+        console.error(`Socket error for user ${socket.id}:`, error);
+      });
+    });
+
+    server.listen(PORT, () => {
       console.log(`> Secure server running on port ${PORT}`);
       console.log(`> Environment: ${process.env.NODE_ENV || 'not set'}`);
     });
@@ -50,20 +91,25 @@ const startServer = async () => {
           process.exit(1);
           break;
         default:
+          console.error("Server listen error:", error);
           throw error;
       }
     });
 
   } catch (error: any) {
-    console.error("Error starting server:", error.message);
+    console.error("Error during server startup:", error.message);
+    console.error("Full error details:", error);
     process.exit(1);
   }
 };
 
-// Graceful shutdown logic
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} received. Shutting down gracefully...`);
   try {
+    // You might want to add logic here to close the Socket.io server
+    // if you have access to the 'io' instance in this scope.
+    // For now, closing the HTTP server will eventually close socket connections.
+
     await mongoose.connection.close();
     console.log("MongoDB connection closed.");
     process.exit(0);
@@ -73,9 +119,7 @@ const shutdown = async (signal: string) => {
   }
 };
 
-// Listen for termination signals
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-// Start the server
 startServer();

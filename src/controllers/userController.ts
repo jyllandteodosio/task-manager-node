@@ -31,6 +31,40 @@ const getUserById = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
+const findUsersByUsername = async (req: Request, res: Response): Promise<void> => {
+	try {
+		const { username } = req.query;
+
+		if (!username) {
+			res.status(400).json({ message: "Username query parameter is required." });
+			return;
+		}
+
+		const loggedInUserId = req.session.userId;
+
+		const users = await userService.findUsersByUsername(username as string, loggedInUserId);
+
+		if (!users || users.length === 0) {
+			res.status(404).json({ message: "No users found." });
+			return;
+		}
+
+		const usersResponse = users.map(user => {
+			const { password, ...userResponse } = user.toObject();
+			return userResponse;
+		});
+
+		res.status(200).json({
+			message: "Successfully fetched users",
+			result: usersResponse,
+		});
+
+	} catch (error: any) {
+		console.error("Error in findUsersByUsername controller:", error);
+		res.status(500).json({ message: "Internal server error", error: error.message });
+	}
+};
+
 const addUser = async (req: Request, res: Response): Promise<void> => {
 	try {
 		const userData = req.body;
@@ -125,6 +159,6 @@ const deleteUser = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
-const userController = { getUserById, addUser, updateUser, deleteUser };
+const userController = { getUserById, findUsersByUsername, addUser, updateUser, deleteUser };
 
 export default userController;
