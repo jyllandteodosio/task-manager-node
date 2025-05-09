@@ -1,3 +1,57 @@
+# Dependencies
 node_modules/
-db/
-compose.yaml
+dist/ # Often where compiled output goes (e.g., if using TypeScript)
+build/ # Another common build output directory
+
+# Environment variables
+.env
+.env.* # Ignore variations like .env.local, .env.development, etc. unless you have a specific reason to commit empty templates
+
+# Log files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime files
+npm-debug.log
+yarn-error.log
+.pnpm-debug.log*
+
+# Optional: Build outputs for Docker (if generated inside the context directory)
+# Adjust these based on your specific Docker build process if it creates temporary files
+# docker-compose.override.yml # Often contains local overrides, might want to ignore
+
+# Editor directories and files
+.vscode/ # VSCode-specific settings
+.idea/ # IntelliJ IDEA-specific settings
+*.iml # IntelliJ IDEA module files
+*.swp # Vim swap files
+*.swo # Vim swap files
+.DS_Store # macOS system files
+Thumbs.db # Windows system files
+
+# Testing and coverage
+coverage/ # Code coverage reports
+.nyc_output/ # Another common coverage output directory
+/.cache # Jest cache
+
+# Misc
+.eslintcache
+.stylelintcache
+*.seed
+*.pid # Process id files
+*.sock # Socket files
+
+# Certificates or keys (if not handled by env variables or Docker secrets)
+# Make sure these are handled securely outside of version control!
+cert/
+*.pem
+*.key
+*.crt
+
+# MongoDB specific files (if you run a local Mongo instance not in Docker)
+# dump/ # Mongodump output

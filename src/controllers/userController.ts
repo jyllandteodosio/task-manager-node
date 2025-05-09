@@ -1,6 +1,48 @@
 import { Request, Response } from "express";
 import { userService } from "../services/userService.ts";
 import { isValidObjectId } from 'mongoose';
+import axios from 'axios';
+
+const verifyRecaptcha = async (token: string | undefined): Promise<boolean> => {
+	if (!token) {
+		return false;
+	}
+
+	const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+	if (!secretKey) {
+		console.error("RECAPTCHA_SECRET_KEY is not set in environment variables.");
+		return false;
+	}
+
+	try {
+		const response = await axios.post(
+			`https://www.google.com/recaptcha/api/siteverify`,
+			null,
+			{
+				params: {
+					secret: secretKey,
+					response: token,
+				},
+			}
+		);
+
+		const { success, score } = response.data;
+
+		const scoreThreshold = 0.5;
+
+		if (success && score >= scoreThreshold) {
+			console.log(`Recaptcha verification successful with score: ${score}`);
+			return true;
+		} else {
+			console.warn(`Recaptcha verification failed or score too low: success=${success}, score=${score}`);
+			return false;
+		}
+	} catch (error) {
+		console.error("Error verifying recaptcha token:", error);
+		return false;
+	}
+};
+
 
 const getUserById = async (req: Request, res: Response): Promise<void> => {
 	try {
@@ -68,13 +110,23 @@ const findUsersByUsername = async (req: Request, res: Response): Promise<void> =
 const addUser = async (req: Request, res: Response): Promise<void> => {
 	try {
 		const userData = req.body;
+		const { recaptchaToken, ...restUserData } = userData;
 
-		if (!userData.username || !userData.password) {
+		const isHuman = await verifyRecaptcha(recaptchaToken);
+
+		if (!isHuman) {
+			res.status(400).json({
+				message: "reCAPTCHA verification failed. Please try again.",
+			});
+			return;
+		}
+
+		if (!restUserData.username || !restUserData.password) {
 			res.status(400).json({ message: "Username and password are required." });
 			return;
 		}
 
-		const newUser = await userService.addUser(userData);
+		const newUser = await userService.addUser(restUserData);
 
 		if (!newUser) {
 			res.status(409).json({ message: "Failed to register user. Username might already exist." });
@@ -158,6 +210,7 @@ const deleteUser = async (req: Request, res: Response): Promise<void> => {
 		res.status(500).json({ message: "Internal server error", error: error.message });
 	}
 };
+
 
 const userController = { getUserById, findUsersByUsername, addUser, updateUser, deleteUser };
 

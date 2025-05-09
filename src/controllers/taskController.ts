@@ -220,7 +220,7 @@ export const deleteTaskUnderList = async (req: Request, res: Response): Promise<
 
     const io: Server = req.app.get('socketio');
     if (io) {
-      io.to(listId).emit('taskDeleted', { listId: listId, taskId: deletedTask._id, message: 'A task was deleted' });
+      io.to(listId).emit('taskDeleted', { listId: listId, task: deletedTask, message: 'A task was deleted' });
       console.log(`Emitted 'taskDeleted' for list ${listId} after deleting task ${deletedTask._id}`);
     } else {
       console.warn("Socket.IO instance not found on app.");

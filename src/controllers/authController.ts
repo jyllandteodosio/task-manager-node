@@ -1,5 +1,47 @@
 import { Request, Response } from "express";
 import { authService } from "../services/authService.ts";
+import axios from 'axios';
+
+const verifyRecaptcha = async (token: string | undefined): Promise<boolean> => {
+	if (!token) {
+		return false;
+	}
+
+	const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+	if (!secretKey) {
+		console.error("RECAPTCHA_SECRET_KEY is not set in environment variables.");
+		return false;
+	}
+
+	try {
+		const response = await axios.post(
+			`https://www.google.com/recaptcha/api/siteverify`,
+			null,
+			{
+				params: {
+					secret: secretKey,
+					response: token,
+				},
+			}
+		);
+
+		const { success, score } = response.data;
+
+		const scoreThreshold = 0.5;
+
+		if (success && score >= scoreThreshold) {
+			console.log(`Recaptcha verification successful with score: ${score}`);
+			return true;
+		} else {
+			console.warn(`Recaptcha verification failed or score too low: success=${success}, score=${score}`);
+			return false;
+		}
+	} catch (error) {
+		console.error("Error verifying recaptcha token:", error);
+		return false;
+	}
+};
+
 
 /**
  * Checks the authentication status based on the current session.
@@ -34,6 +76,19 @@ const checkAuthStatus = async (req: Request, res: Response): Promise<void> => {
  */
 const login = async (req: Request, res: Response): Promise<void> => {
 	try {
+		const { username, password, recaptchaToken } = req.body;
+
+		const isHuman = await verifyRecaptcha(recaptchaToken);
+
+		if (!isHuman) {
+			res.status(400).json({
+				message: "reCAPTCHA verification failed. Please try again.",
+				isAuthenticated: false,
+				result: null,
+			});
+			return;
+		}
+
 		const userId = await authService.loginUser(req);
 
 		if (userId) {
