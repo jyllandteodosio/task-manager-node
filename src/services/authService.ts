@@ -1,6 +1,5 @@
-import { Request, Response } from "express"; 
-import bcrypt from "bcryptjs";
-import User, { IUser } from '../models/userModel.ts';
+import { Request, Response } from "express";
+import { IUser } from '../models/userModel.ts';
 import { userService } from './userService.ts';
 
 declare module "express-session" {
@@ -9,61 +8,6 @@ declare module "express-session" {
         isAuthenticated: boolean;
     }
 }
-
-/**
- * Authenticates a user based on username and password.
- * Uses Mongoose User model for database interaction.
- * Compares hashed passwords securely using bcrypt.
- * Saves user ID and authentication status to the session upon success.
- * @param req - Express Request object containing username and password in the body.
- * @returns The user's ID (as a string) upon successful authentication, or null otherwise.
- */
-const loginUser = async (req: Request): Promise<string | null> => {
-    try {
-        const { username, password: inputPassword } = req.body;
-
-        if (!username || !inputPassword) {
-            console.log("Login attempt with missing username or password.");
-            return null;
-        }
-
-        const foundUser: IUser | null = await User.findOne({ username: username }).exec();
-
-        if (!foundUser) {
-            console.log(`Login attempt failed: User "${username}" not found.`);
-            return null;
-        }
-
-        const isPasswordMatch: boolean = await bcrypt.compare(inputPassword, foundUser.password);
-
-        if (!isPasswordMatch) {
-            console.log(`Login attempt failed: Incorrect password for user "${username}".`);
-            return null;
-        }
-
-        console.log(`User "${username}" authenticated successfully.`);
-
-        await new Promise<void>((resolve, reject) => {
-			req.session.regenerate((err: Error | null): void => {
-				if (err) {
-					console.error("Session regeneration error:", err);
-					reject(new Error('Failed to regenerate session'));
-				} else {
-					req.session.userId = foundUser._id.toString();
-					req.session.isAuthenticated = true;
-					console.log(`Session regenerated and saved for user: ${foundUser._id.toString()}`);
-					resolve();
-				}
-			});
-        });
-
-        return foundUser._id.toString();
-
-    } catch (error) {
-        console.error("Error during login process:", error);
-        return null;
-    }
-};
 
 /**
  * Checks if the current session belongs to an authenticated user.
@@ -95,22 +39,21 @@ const checkAuthStatus = async (req: Request): Promise<Omit<IUser, 'password'> | 
  */
 const logoutUser = async (req: Request, res: Response): Promise<boolean> => {
     return new Promise((resolve) => {
-		req.session.destroy((err: Error | null): void => {
-			if (err) {
-			console.error("Error destroying session:", err);
-			resolve(false); 
-			} else {
-			res.clearCookie('connect.sid');
-			console.log("Session destroyed successfully.");
-			resolve(true); 
-			}
-		});
+        req.session.destroy((err: Error | null): void => {
+            if (err) {
+                console.error("Error destroying session:", err);
+                resolve(false);
+            } else {
+                res.clearCookie('connect.sid');
+                console.log("Session destroyed successfully.");
+                resolve(true);
+            }
+        });
     });
 };
 
 
 export const authService = {
-    loginUser,
     checkAuthStatus,
     logoutUser
 };
