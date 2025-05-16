@@ -11,10 +11,10 @@ const connectDB = async (): Promise<void> => {
   }
 
   try {
-    console.log(`process.env.MONGO_URI: ${process.env.MONGO_URI}`);
+    // console.log(`process.env.MONGO_URI: ${process.env.MONGO_URI}`);
     await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/task_manager_fallback');
 
-    console.log(`MongoDB Connected Successfully via Mongoose to database: ${mongoose.connection.name}`);
+    console.log(`> MongoDB Connected Successfully via Mongoose to database: ${mongoose.connection.name}`);
 
     mongoose.connection.on('error', (err) => {
       console.error('Mongoose connection error:', err);

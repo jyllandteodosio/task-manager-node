@@ -7,6 +7,8 @@ import listsRouter from "./routes/lists.ts";
 import tasksRouter from "./routes/tasks.ts";
 import usersRouter from "./routes/users.ts";
 import authRouter from "./routes/auth.ts";
+import passport from "passport";
+import "./config/passport-setup.ts";
 
 const app = express();
 
@@ -37,6 +39,10 @@ app.use((req, res, next) => {
     },
   })(req, res, next);
 });
+
+// Passport Configuration
+app.use(passport.initialize());
+app.use(passport.session());
 
 // CORS Configuration
 app.use((req, res, next) => {

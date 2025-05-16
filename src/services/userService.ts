@@ -19,28 +19,20 @@ const getUserById = async (userId: string): Promise<IUser | null> => {
 };
 
 /**
- * Finds users by their username using a case-insensitive regex search.
+ * Finds users by their email using a case-insensitive regex search.
  * Optionally excludes a user by their MongoDB _id.
- * @param username - The username to search for.
+ * @param email - The email to search for.
  * @param excludeUserId - The MongoDB _id of the user to exclude from the search.
  * @returns A promise that resolves to an array of user documents or null on error.
  */
-const findUsersByUsername = async (username: string, excludeUserId?: string): Promise<IUser[] | null> => {
-    try {
-        const query: any = {
-            username: { $regex: username, $options: 'i' },
-        };
-
-        if (excludeUserId) {
-            query._id = { $ne: excludeUserId };
-        }
-
-        const users = await User.find(query).exec();
-        return users;
-    } catch (error) {
-        console.error(`Error fetching user by username ${username}:`, error);
-        return null;
+const findUsersByEmail = async (email: string, excludeUserId?: string) => {
+    const query: any = {
+        email: { $regex: new RegExp(email, "i") }
+    };
+    if (excludeUserId) {
+        query._id = { $ne: excludeUserId };
     }
+    return User.find(query);
 };
 
 /**
@@ -128,7 +120,7 @@ const deleteUser = async (userId: string): Promise<IUser | null> => {
 
 export const userService = {
     getUserById,
-    findUsersByUsername,
+    findUsersByEmail,
     addUser,
     updateUser,
     deleteUser

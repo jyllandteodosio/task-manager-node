@@ -2,13 +2,15 @@ import { Request, Response } from "express";
 import { listService } from "../services/listService.ts";
 import { isValidObjectId } from 'mongoose';
 import { Server } from "socket.io";
+import { AuthenticatedRequest } from "../routes/auth.ts";
 
 /**
  * Gets all lists accessible by the logged-in user.
  */
 export const getListsByUser = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const userId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const userId = user?._id;
 		if (!userId) {
 			res.status(401).json({ message: "Unauthorized: User not logged in." });
 			return;
@@ -32,7 +34,8 @@ export const getListsByUser = async (req: Request, res: Response): Promise<void>
  */
 export const getListById = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const userId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const userId = user?._id;
 		const { listId } = req.params;
 
 		if (!userId) {
@@ -67,8 +70,8 @@ export const getListById = async (req: Request, res: Response): Promise<void> =>
  */
 export const addList = async (req: Request, res: Response): Promise<void> => {
 	try {
-		console.log("Request body for adding list:", req.body);
-		const userId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const userId = user?._id;
 		const listData = req.body;
 
 		if (!userId) {
@@ -104,7 +107,8 @@ export const addList = async (req: Request, res: Response): Promise<void> => {
  */
 export const updateList = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const userId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const userId = user?._id;
 		const { listId } = req.params;
 		const updateData = req.body;
 
@@ -141,7 +145,8 @@ export const updateList = async (req: Request, res: Response): Promise<void> => 
  */
 export const deleteList = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const userId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const userId = user?._id;
 		const { listId } = req.params;
 
 		if (!userId) {
@@ -177,7 +182,8 @@ export const deleteList = async (req: Request, res: Response): Promise<void> => 
  */
 export const addCollaborator = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const ownerId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const ownerId = user?._id;
 		const { listId } = req.params;
 		const { collaboratorId } = req.params;
 
@@ -233,7 +239,8 @@ export const addCollaborator = async (req: Request, res: Response): Promise<void
  */
 export const removeCollaborator = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const ownerId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const ownerId = user?._id;
 		const { listId, collaboratorId } = req.params;
 
 		if (!ownerId) {

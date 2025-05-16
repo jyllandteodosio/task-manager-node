@@ -41,7 +41,7 @@ const startServer = async () => {
         credentials: true,
       }
     });
-    console.log("Socket.IO server initialized successfully.");
+    console.log("> Socket.IO server initialized successfully.");
 
     app.set('socketio', io);
 

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { userService } from "../services/userService.ts";
 import { isValidObjectId } from 'mongoose';
 import axios from 'axios';
+import { AuthenticatedRequest } from "../routes/auth.ts";
 
 const verifyRecaptcha = async (token: string | undefined): Promise<boolean> => {
 	if (!token) {
@@ -73,18 +74,19 @@ const getUserById = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
-const findUsersByUsername = async (req: Request, res: Response): Promise<void> => {
+const findUsersByEmail = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const { username } = req.query;
+		const { email } = req.query;
 
-		if (!username) {
-			res.status(400).json({ message: "Username query parameter is required." });
+		if (!email) {
+			res.status(400).json({ message: "Email query parameter is required." });
 			return;
 		}
 
-		const loggedInUserId = req.session.userId;
+		const { user } = req as AuthenticatedRequest;
+		const loggedInUserId = user?._id;
 
-		const users = await userService.findUsersByUsername(username as string, loggedInUserId);
+		const users = await userService.findUsersByEmail(email as string, loggedInUserId?.toString());
 
 		if (!users || users.length === 0) {
 			res.status(404).json({ message: "No users found." });
@@ -102,7 +104,7 @@ const findUsersByUsername = async (req: Request, res: Response): Promise<void> =
 		});
 
 	} catch (error: any) {
-		console.error("Error in findUsersByUsername controller:", error);
+		console.error("Error in findUsersByEmail controller:", error);
 		res.status(500).json({ message: "Internal server error", error: error.message });
 	}
 };
@@ -212,6 +214,6 @@ const deleteUser = async (req: Request, res: Response): Promise<void> => {
 };
 
 
-const userController = { getUserById, findUsersByUsername, addUser, updateUser, deleteUser };
+const userController = { getUserById, findUsersByEmail, addUser, updateUser, deleteUser };
 
 export default userController;

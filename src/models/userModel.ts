@@ -3,8 +3,10 @@ import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
 	_id: Types.ObjectId;
-	username: string;
-	password: string;
+	username?: string;
+	password?: string;
+	email?: string | null;
+	googleId?: string | null;
 	firstName?: string;
 	lastName?: string;
 }
@@ -12,16 +14,32 @@ export interface IUser extends Document {
 const userSchema = new Schema<IUser>({
 	username: {
 		type: String,
-		required: [true, 'Username is required'],
+		required: function (this: IUser) {
+			return !this.googleId;
+		} as any,
 		unique: true,
+		sparse: true,
 		trim: true,
 		index: true,
 		lowercase: true,
 	},
 	password: {
 		type: String,
-		required: [true, 'Password is required'],
+		required: function (this: IUser) {
+			return !this.googleId;
+		} as any,
 		minlength: [6, 'Password must be at least 6 characters long'],
+	},
+	email: {
+		type: String,
+		unique: true,
+		sparse: true,
+		index: true
+	},
+	googleId: {
+		type: String,
+		unique: true,
+		sparse: true
 	},
 	firstName: {
 		type: String,
@@ -38,7 +56,7 @@ const userSchema = new Schema<IUser>({
 userSchema.pre<IUser>('save', async function (next) {
 	const user = this;
 
-	if (!user.isModified('password')) {
+	if (!user.isModified('password') || !user.password) {
 		return next();
 	}
 
