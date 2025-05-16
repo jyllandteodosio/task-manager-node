@@ -15,7 +15,7 @@ RUN npm install --include=dev
 COPY . .
 
 # Expose the port that the application listens on.
-EXPOSE 3000
+EXPOSE 5000
 
 # Start the server
 CMD ["npm", "run", "dev"]
