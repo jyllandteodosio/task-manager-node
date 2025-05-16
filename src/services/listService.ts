@@ -1,4 +1,4 @@
-import List, { IList } from '../models/listModel.ts';
+import List, { IList } from '../models/listModel.js';
 import { Types } from 'mongoose';
 
 /**

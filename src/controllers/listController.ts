@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { listService } from "../services/listService.ts";
+import { listService } from "../services/listService.js";
 import { isValidObjectId } from 'mongoose';
 import { Server } from "socket.io";
-import { AuthenticatedRequest } from "../routes/auth.ts";
+import { AuthenticatedRequest } from "../routes/auth.js";
 
 /**
  * Gets all lists accessible by the logged-in user.

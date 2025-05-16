@@ -1,6 +1,6 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy, Profile, VerifyCallback } from 'passport-google-oauth20';
-import User from '../models/userModel.ts';
+import User from '../models/userModel.js';
 
 // Serialize user into the session
 // Serialize the user's database ID (_id)

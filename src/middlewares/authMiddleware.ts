@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { IUser } from '../models/userModel.ts';
+import { IUser } from '../models/userModel.js';
 
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
 	const user = req.user as IUser | undefined;

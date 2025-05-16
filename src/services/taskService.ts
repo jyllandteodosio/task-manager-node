@@ -1,7 +1,7 @@
 
 import { Types } from 'mongoose';
-import Task, { ITask } from '../models/taskModel.ts';
-import { listService } from './listService.ts';
+import Task, { ITask } from '../models/taskModel.js';
+import { listService } from './listService.js';
 
 /**
  * Fetches all tasks for a specific list, ensuring the user has access.

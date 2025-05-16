@@ -3,12 +3,12 @@ import cors from "cors";
 import session from "express-session";
 import MongoStore from "connect-mongo";
 import mongoose from 'mongoose';
-import listsRouter from "./routes/lists.ts";
-import tasksRouter from "./routes/tasks.ts";
-import usersRouter from "./routes/users.ts";
-import authRouter from "./routes/auth.ts";
+import listsRouter from "./routes/lists.js";
+import tasksRouter from "./routes/tasks.js";
+import usersRouter from "./routes/users.js";
+import authRouter from "./routes/auth.js";
 import passport from "passport";
-import "./config/passport-setup.ts";
+import "./config/passport-setup.js";
 
 const app = express();
 

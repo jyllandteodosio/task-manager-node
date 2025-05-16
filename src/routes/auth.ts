@@ -1,8 +1,8 @@
 import express, { NextFunction, Request, Response } from "express";
-import authController from "../controllers/authController.ts";
-import userController from "../controllers/userController.ts";
-import { IUser } from '../models/userModel.ts';
-import authMiddleware from "../middlewares/authMiddleware.ts";
+import authController from "../controllers/authController.js";
+import userController from "../controllers/userController.js";
+import { IUser } from '../models/userModel.js';
+import authMiddleware from "../middlewares/authMiddleware.js";
 import passport from 'passport';
 
 const CLIENT_URL = process.env.CLIENT_URL || "https://localhost:3000";

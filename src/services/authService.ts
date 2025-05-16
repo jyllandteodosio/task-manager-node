@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { IUser } from '../models/userModel.ts';
-import { userService } from './userService.ts';
+import { IUser } from '../models/userModel.js';
+import { userService } from './userService.js';
 
 declare module "express-session" {
     interface SessionData {

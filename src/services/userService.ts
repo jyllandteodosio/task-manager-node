@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import User, { IUser } from '../models/userModel.ts';
+import User, { IUser } from '../models/userModel.js';
 
 const saltRounds = 10;
 

@@ -1,5 +1,5 @@
-import connectDB from "./db.ts";
-import app from "./app.ts";
+import connectDB from "./db.js";
+import app from "./app.js";
 import mongoose from 'mongoose';
 import https from "https";
 import fs from "fs";

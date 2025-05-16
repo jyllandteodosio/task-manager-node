@@ -1,17 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ESNext",            // Use ESNext to handle latest JS features
-    "module": "ESNext",            // Use ESNext for ES Module compatibility
-    "moduleResolution": "bundler",    // Resolve modules as Node.js would
-    "outDir": "./dist",            // Where compiled JS will go
-    "rootDir": "./src",            // Where your TS files are located
-    "esModuleInterop": true,       // Enable interoperability between CommonJS and ESM
-    "resolveJsonModule": true,     // Allow importing JSON files
-    "allowSyntheticDefaultImports": true,  // Allow default imports from CommonJS modules
-    "allowImportingTsExtensions": true,  // Allow importing `.ts` files directly (if needed)
-    "noEmit": true,  // Don't emit any output, useful for pure type-checking
-    "strict": true                 // Enable all strict checks
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "target": "es2022",
+    "module": "node16",
   },
-  "include": ["src/**/*.ts", "src/**/*", "@types/**/*.d.ts"],       // Include all TypeScript files
-  "exclude": ["node_modules"]       // Exclude node_modules
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
 }

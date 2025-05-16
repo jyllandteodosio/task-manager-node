@@ -24,7 +24,7 @@ RUN npm install --production
 # This assumes your build output is in a 'dist' directory. Adjust if necessary.
 COPY --from=builder /app/dist ./dist
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 EXPOSE 3000
 

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { authService } from "../services/authService.ts";
+import { authService } from "../services/authService.js";
 import axios from 'axios';
 
 const verifyRecaptcha = async (token: string | undefined): Promise<boolean> => {

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { userService } from "../services/userService.ts";
+import { userService } from "../services/userService.js";
 import { isValidObjectId } from 'mongoose';
 import axios from 'axios';
-import { AuthenticatedRequest } from "../routes/auth.ts";
+import { AuthenticatedRequest } from "../routes/auth.js";
 
 const verifyRecaptcha = async (token: string | undefined): Promise<boolean> => {
 	if (!token) {

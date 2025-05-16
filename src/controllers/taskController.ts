@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { isValidObjectId } from 'mongoose';
-import { taskService } from "../services/taskService.ts";
+import { taskService } from "../services/taskService.js";
 import { Server } from "socket.io";
-import { AuthenticatedRequest } from "../routes/auth.ts";
+import { AuthenticatedRequest } from "../routes/auth.js";
 
 /**
  * Gets all tasks for a specific list, checking user access.
