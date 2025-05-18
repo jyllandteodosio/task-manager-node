@@ -37,6 +37,18 @@ jobs:
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/taskaru-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        env:
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          NODE_ENV: ${{ vars.NODE_ENV }}
+          PORT: ${{ vars.PORT }}
+          MONGO_URI: ${{ vars.MONGO_URI }}
+          DB_URI: ${{ vars.DB_URI }}
+          CERT_FOLDER: ${{ vars.CERT_FOLDER }}
+          CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
+          CLIENT_URL: ${{ vars.CLIENT_URL }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
 
       # Optional: Add a notification step here if needed,
       # e.g., sending a message to Slack or Discord that a new image is ready.
