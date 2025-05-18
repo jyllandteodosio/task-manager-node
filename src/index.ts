@@ -1,39 +1,59 @@
 import connectDB from "./db.js";
 import app from "./app.js";
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import http from "http";
 import https from "https";
 import fs from "fs";
 import path from "path";
 import { Server } from "socket.io";
 
-const homeDir = process.env.HOME;
-if (!homeDir) {
-  console.error("HOME environment variable not set. Check Docker Compose environment section.");
-  process.exit(1);
-}
-const keyPath = path.join(homeDir, "localhost-key.pem");
-const certPath = path.join(homeDir, "localhost.pem");
+const isProduction = process.env.NODE_ENV === "production";
+const PORT = process.env.PORT || 5000;
 
-if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-  console.error(`SSL certificate files not found in ${homeDir}. Check volume mounts and file paths.`);
-  console.error(`Expected key at: ${keyPath}`);
-  console.error(`Expected cert at: ${certPath}`);
-  process.exit(1);
-}
-
-const httpsOptions = {
-  key: fs.readFileSync(keyPath),
-  cert: fs.readFileSync(certPath),
-};
+let server: http.Server | https.Server;
 
 const startServer = async () => {
   try {
     await connectDB();
 
-    const PORT = process.env.PORT || 5000;
+    if (isProduction) {
+      // --- Production Environment: Run as plain HTTP behind Nginx proxy ---
+      console.log(`Running backend in production mode (HTTP) on port ${PORT}`);
+      server = http.createServer(app);
 
-    const server = https.createServer(httpsOptions, app);
+    } else {
+      // --- Development or Other Environments: Run with HTTPS (using local certs) ---
+      console.log(`Running backend in development/non-production mode (HTTPS) on port ${PORT}`);
 
+      const homeDir = process.env.HOME;
+      if (!homeDir) {
+        console.error("HOME environment variable not set. Ensure it's configured for development.");
+        process.exit(1);
+      }
+      const keyPath = path.join(homeDir, "localhost-key.pem");
+      const certPath = path.join(homeDir, "localhost.pem");
+
+      if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+        console.error(`SSL certificate files not found in ${homeDir} for development HTTPS.`);
+        console.error(`Expected key at: ${keyPath}`);
+        console.error(`Expected cert at: ${certPath}`);
+        console.error("Ensure your development certificates are correctly volume mounted or placed in the expected HOME directory.");
+
+        if (!isProduction) {
+          process.exit(1);
+        }
+      }
+
+      const httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+      };
+
+      server = https.createServer(httpsOptions, app);
+
+    }
+
+    // --- Socket.IO Initialization (common for both HTTP and HTTPS) ---
     const io = new Server(server, {
       cors: {
         origin: process.env.CORS_ORIGIN || 'https://localhost:3000',
@@ -72,11 +92,13 @@ const startServer = async () => {
       });
     });
 
+    // --- Start the server (listen on the specified port) ---
     server.listen(PORT, () => {
       console.log(`> Secure server running on port ${PORT}`);
       console.log(`> Environment: ${process.env.NODE_ENV || 'not set'}`);
     });
 
+    // --- Handle server errors ---
     server.on('error', (error: NodeJS.ErrnoException) => {
       if (error.syscall !== 'listen') {
         throw error;
@@ -103,19 +125,40 @@ const startServer = async () => {
   }
 };
 
+// --- Graceful Shutdown ---
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} received. Shutting down gracefully...`);
   try {
-    // You might want to add logic here to close the Socket.io server
-    // if you have access to the 'io' instance in this scope.
-    // For now, closing the HTTP server will eventually close socket connections.
+    // Close the HTTP/HTTPS server
+    if (server) {
+      server.close(() => {
+        console.log("HTTP/HTTPS server closed.");
+        // After the server is closed, close other resources
+        closeOtherResources();
+      });
+    } else {
+      // If server wasn't created for some reason, just close other resources
+      closeOtherResources();
+    }
 
-    await mongoose.connection.close();
-    console.log("MongoDB connection closed.");
-    process.exit(0);
   } catch (error) {
     console.error("Error during graceful shutdown:", error);
     process.exit(1);
+  }
+};
+
+const closeOtherResources = async () => {
+  try {
+    // Close MongoDB connection
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.close();
+      console.log("MongoDB connection closed.");
+    }
+
+    process.exit(0); // Exit successfully
+  } catch (error) {
+    console.error("Error closing other resources:", error);
+    process.exit(1); // Exit with error
   }
 };
 
