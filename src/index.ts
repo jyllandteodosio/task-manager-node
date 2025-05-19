@@ -54,7 +54,9 @@ const startServer = async () => {
     }
 
     // --- Socket.IO Initialization (common for both HTTP and HTTPS) ---
+    const socketIoPath = isProduction ? "/api/socket.io/" : "/socket.io/";
     const io = new Server(server, {
+      path: socketIoPath,
       cors: {
         origin: process.env.CORS_ORIGIN || 'https://localhost:3000',
         methods: ["GET", "POST"],
