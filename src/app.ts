@@ -15,6 +15,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.set('trust proxy', true);
+
 // Session Configuration
 app.use((req, res, next) => {
   if (req.url.startsWith('/socket.io/')) {
@@ -35,7 +37,8 @@ app.use((req, res, next) => {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 7
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+      domain: process.env.COOKIE_DOMAIN || 'taskaru.jyllandteodosio.dev',
     },
   })(req, res, next);
 });
